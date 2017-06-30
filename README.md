@@ -1,4 +1,4 @@
-# ZkUPdater
+# ZkUdater
 
 This tool will update the Couchbase Kafka Connector (2.0.0) ZooKeeper state to match the most recent failover log entries from Couchbase.
 
