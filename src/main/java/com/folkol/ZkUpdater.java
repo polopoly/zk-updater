@@ -9,18 +9,24 @@ import org.I0Itec.zkclient.ZkClient;
 public class ZkUpdater
 {
     private static ZkClient zkClient;
+    private static String cbHost;
+    private static String zkHost;
+    private static String bucket;
+    private static String passwd;
+    private static String dcpClientName;
 
     public static void main(String[] args) throws Exception
     {
-        if (args.length != 4) {
-            System.out.println("usage: java ZkUpdater cbHost zkHost bucketname bucketpasswd");
+        if (args.length != 5) {
+            System.out.println("usage: java ZkUpdater cbHost zkHost bucketname bucketpasswd dcpClientName");
             System.exit(1);
         }
 
-        String cbHost = args[0];
-        String zkHost = args[1];
-        String bucket = args[2];
-        String passwd = args[3];
+        cbHost = args[0];
+        zkHost = args[1];
+        bucket = args[2];
+        passwd = args[3];
+        dcpClientName = args[4];
 
         zkClient = new ZkClient(zkHost, 4000, 6000, ZKStringSerializer$.MODULE$);
 
@@ -30,11 +36,8 @@ public class ZkUpdater
                                     .password(passwd)
                                     .build();
         client.controlEventHandler(ReferenceCounted::release);
-        client.dataEventHandler(event -> {
-            System.out.println("Got event: " + event);
-        });
+        client.dataEventHandler(event -> System.out.println("Got DCP event: " + event));
         client.connect().await();
-
 
         client.failoverLogs()
               .toBlocking()
@@ -57,7 +60,7 @@ public class ZkUpdater
     }
 
     private static String pathForState(final short partition) {
-        return String.format("/couchbase-kafka-connector2/%s/%d", "cmbucket", partition);
+        return String.format("/%s/%s/%d", dcpClientName, bucket, partition);
     }
 
     private static void writeState(short partition, long vid, long seqno) {
