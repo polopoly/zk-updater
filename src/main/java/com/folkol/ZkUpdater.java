@@ -22,6 +22,8 @@ public class ZkUpdater
     {
         if (args.length != 5) {
             System.out.println("usage: java ZkUpdater cbHost zkHost bucketname bucketpasswd dcpClientName");
+            System.out.println("\tExample: java -jar target/zk-updater-jar-with-dependencies.jar localhost " +
+                                   "localhost cmbucket cmpasswd couchbase-kafka-connector2");
             System.exit(1);
         }
 
