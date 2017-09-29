@@ -1,8 +1,11 @@
 package com.folkol;
 
 import com.couchbase.client.dcp.Client;
+import com.couchbase.client.dcp.StreamFrom;
+import com.couchbase.client.dcp.StreamTo;
 import com.couchbase.client.dcp.message.DcpFailoverLogResponse;
-import com.couchbase.client.deps.io.netty.util.ReferenceCounted;
+import com.couchbase.client.dcp.state.PartitionState;
+import com.couchbase.client.dcp.state.SessionState;
 import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
 
@@ -35,9 +38,12 @@ public class ZkUpdater
                                     .bucket(bucket)
                                     .password(passwd)
                                     .build();
-        client.controlEventHandler(ReferenceCounted::release);
-        client.dataEventHandler(event -> System.out.println("Got DCP event: " + event));
+        client.controlEventHandler((channelFlowController, byteBuf) -> byteBuf.release());
+        client.dataEventHandler((channelFlowController, byteBuf) -> byteBuf.release());
+
         client.connect().await();
+        client.initializeState(StreamFrom.NOW, StreamTo.INFINITY).await();
+        SessionState sessionState = client.sessionState();
 
         client.failoverLogs()
               .toBlocking()
@@ -47,14 +53,15 @@ public class ZkUpdater
 
                       short partition = DcpFailoverLogResponse.vbucket(buffer);
                       long vid = DcpFailoverLogResponse.vbuuidEntry(buffer, 0);
-                      long seqno = DcpFailoverLogResponse.seqnoEntry(buffer, 0);
-
+                      PartitionState partitionState = sessionState.get(partition);
+                      long seqno = partitionState.getStartSeqno();
                       writeState(partition, vid, seqno);
                   } else {
                       System.out.println("Expected DcpFailoverLog, got: " + buffer);
                   }
 
               });
+
         client.disconnect().await();
         zkClient.close();
     }
